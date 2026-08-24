@@ -1,0 +1,231 @@
+-- ==========================================
+-- DOWNTOWN SCRIPT FOR ROBLOX + GUI MENU
+-- ==========================================
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+local CoreGui = game:GetService("CoreGui")
+local LocalPlayer = Players.LocalPlayer
+
+-- State Variables & Values
+local Wood_Enabled = false
+local Iron_Enabled = false
+local Speed_Enabled = false
+local Jump_Enabled = false
+
+local WalkSpeedVal = 50  -- ความเร็วในการวิ่ง (1-300)
+local JumpPowerVal = 100 -- ความเร็วกระโดดสูง (1-300)
+
+local spawnedParts = {Wood = {}, Iron = {}}
+
+-------------------------------------------------
+-- GUI MENU (หน้าต่างเมนู UI)
+-------------------------------------------------
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "Downtown_MenuGui"
+ScreenGui.Parent = CoreGui
+ScreenGui.ResetOnSpawn = false
+
+-- ปุ่มเปิด/ปิด เมนูหลัก
+local ToggleButton = Instance.new("TextButton")
+ToggleButton.Size = UDim2.new(0, 80, 0, 35)
+ToggleButton.Position = UDim2.new(0, 20, 0, 50)
+ToggleButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+ToggleButton.BorderColor3 = Color3.fromRGB(255, 255, 255)
+ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleButton.TextSize = 14
+ToggleButton.Font = Enum.Font.SourceSansBold
+ToggleButton.Text = "DOWNTOWN"
+ToggleButton.Parent = ScreenGui
+
+-- กรอบหน้าต่างหลัก
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 260, 0, 330)
+MainFrame.Position = UDim2.new(0, 20, 0, 100)
+MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+MainFrame.BorderColor3 = Color3.fromRGB(80, 80, 80)
+MainFrame.Visible = true
+MainFrame.Parent = ScreenGui
+
+ToggleButton.MouseButton1Click:Connect(function()
+    MainFrame.Visible = not MainFrame.Visible
+end)
+
+-- หัวข้อเมนู
+local TitleLabel = Instance.new("TextLabel")
+TitleLabel.Size = UDim2.new(1, 0, 0, 40)
+TitleLabel.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+TitleLabel.TextSize = 16
+TitleLabel.Font = Enum.Font.SourceSansBold
+TitleLabel.Text = "DOWNTOWN SCRIPT"
+TitleLabel.Parent = MainFrame
+
+-- ฟังก์ชันสร้างปุ่ม Toggle
+local function CreateToggleButton(name, posY, callback)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0, 240, 0, 32)
+    btn.Position = UDim2.new(0, 10, 0, posY)
+    btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.TextSize = 13
+    btn.Font = Enum.Font.SourceSans
+    btn.Text = name .. ": OFF"
+    btn.Parent = MainFrame
+    
+    local state = false
+    btn.MouseButton1Click:Connect(function()
+        state = not state
+        if state then
+            btn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+            btn.Text = name .. ": ON"
+        else
+            btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+            btn.Text = name .. ": OFF"
+        end
+        callback(state)
+    end)
+end
+
+-- สร้างปุ่มเปิด/ปิด (4 ฟังชั่น)
+CreateToggleButton("1. ไม้ (Spawn Wood)", 45, function(state) Wood_Enabled = state end)
+CreateToggleButton("2. เหล็ก (Spawn Iron)", 82, function(state) Iron_Enabled = state end)
+CreateToggleButton("3. วิ่งเร็ว (Speed)", 119, function(state) Speed_Enabled = state end)
+CreateToggleButton("4. กระโดดสูง (Infinite Jump)", 156, function(state) Jump_Enabled = state end)
+
+-- ช่องปรับค่าความเร็ววิ่ง (1 - 300)
+local SpeedLabel = Instance.new("TextLabel")
+SpeedLabel.Size = UDim2.new(0, 240, 0, 18)
+SpeedLabel.Position = UDim2.new(0, 10, 0, 195)
+SpeedLabel.BackgroundTransparency = 1
+SpeedLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+SpeedLabel.TextSize = 12
+SpeedLabel.Font = Enum.Font.SourceSans
+SpeedLabel.Text = "Speed Value (1-300): 50"
+SpeedLabel.Parent = MainFrame
+
+local SpeedBox = Instance.new("TextBox")
+SpeedBox.Size = UDim2.new(0, 240, 0, 25)
+SpeedBox.Position = UDim2.new(0, 10, 0, 215)
+SpeedBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+SpeedBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+SpeedBox.TextSize = 13
+SpeedBox.Font = Enum.Font.SourceSans
+SpeedBox.Text = "50"
+SpeedBox.Parent = MainFrame
+
+SpeedBox.FocusLost:Connect(function()
+    local val = tonumber(SpeedBox.Text)
+    if val then
+        WalkSpeedVal = math.clamp(val, 1, 300)
+        SpeedBox.Text = tostring(WalkSpeedVal)
+        SpeedLabel.Text = "Speed Value (1-300): " .. WalkSpeedVal
+    else
+        SpeedBox.Text = tostring(WalkSpeedVal)
+    end
+end)
+
+-- ช่องปรับค่ากระโดดสูง (1 - 300)
+local JumpLabel = Instance.new("TextLabel")
+JumpLabel.Size = UDim2.new(0, 240, 0, 18)
+JumpLabel.Position = UDim2.new(0, 10, 0, 245)
+JumpLabel.BackgroundTransparency = 1
+JumpLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+JumpLabel.TextSize = 12
+JumpLabel.Font = Enum.Font.SourceSans
+JumpLabel.Text = "Jump Power (1-300): 100"
+JumpLabel.Parent = MainFrame
+
+local JumpBox = Instance.new("TextBox")
+JumpBox.Size = UDim2.new(0, 240, 0, 25)
+JumpBox.Position = UDim2.new(0, 10, 0, 265)
+JumpBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+JumpBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+JumpBox.TextSize = 13
+JumpBox.Font = Enum.Font.SourceSans
+JumpBox.Text = "100"
+JumpBox.Parent = MainFrame
+
+JumpBox.FocusLost:Connect(function()
+    local val = tonumber(JumpBox.Text)
+    if val then
+        JumpPowerVal = math.clamp(val, 1, 300)
+        JumpBox.Text = tostring(JumpPowerVal)
+        JumpLabel.Text = "Jump Power (1-300): " .. JumpPowerVal
+    else
+        JumpBox.Text = tostring(JumpPowerVal)
+    end
+end)
+
+
+-------------------------------------------------
+-- ฟังก์ชันที่ 1 & 2: ไม้ / เหล็ก ร่วงจากฟ้าจำนวนมาก
+-------------------------------------------------
+task.spawn(function()
+    while task.wait(0.2) do
+        local char = LocalPlayer.Character
+        if char and char:FindFirstChild("HumanoidRootPart") then
+            local pos = char.HumanoidRootPart.Position
+            
+            -- ระบบไม้ (Spawn Wood)
+            if Wood_Enabled then
+                for i = 1, 5 do -- ปล่อยลงมาครั้งละ 5 ชิ้น
+                    local part = Instance.new("Part")
+                    part.Size = Vector3.new(4, 1, 6)
+                    part.Position = pos + Vector3.new(math.random(-30, 30), math.random(40, 70), math.random(-30, 30))
+                    part.BrickColor = BrickColor.new("Reddish brown")
+                    part.Material = Enum.Material.Wood
+                    part.Parent = Workspace
+                    table.insert(spawnedParts.Wood, part)
+                end
+            end
+            
+            -- ระบบเหล็ก (Spawn Iron)
+            if Iron_Enabled then
+                for i = 1, 5 do -- ปล่อยลงมาครั้งละ 5 ชิ้น
+                    local part = Instance.new("Part")
+                    part.Size = Vector3.new(3, 3, 3)
+                    part.Position = pos + Vector3.new(math.random(-30, 30), math.random(40, 70), math.random(-30, 30))
+                    part.BrickColor = BrickColor.new("Dark stone grey")
+                    part.Material = Enum.Material.Metal
+                    part.Parent = Workspace
+                    table.insert(spawnedParts.Iron, part)
+                end
+            end
+        end
+    end
+end)
+
+
+-------------------------------------------------
+-- ฟังก์ชันที่ 3: วิ่งเร็ว (WalkSpeed 1-300)
+-------------------------------------------------
+RunService.RenderStepped:Connect(function()
+    local char = LocalPlayer.Character
+    if char and char:FindFirstChild("Humanoid") then
+        local humanoid = char.Humanoid
+        if Speed_Enabled then
+            humanoid.WalkSpeed = WalkSpeedVal
+        else
+            humanoid.WalkSpeed = 16 -- ค่าเริ่มต้นปกติของ Roblox
+        end
+    end
+end)
+
+
+-------------------------------------------------
+-- ฟังก์ชันที่ 4: กระโดดสูงไม่จำกัด (Infinite Jump)
+-------------------------------------------------
+local UserInputService = game:GetService("UserInputService")
+
+UserInputService.JumpRequest:Connect(function()
+    if Jump_Enabled then
+        local char = LocalPlayer.Character
+        if char and char:FindFirstChild("HumanoidRootPart") then
+            local hrp = char.HumanoidRootPart
+            -- ดันตัวละครขึ้นตามค่า JumpPowerVal
+            hrp.Velocity = Vector3.new(hrp.Velocity.X, JumpPowerVal, hrp.Velocity.Z)
+        end
+    end
+end)
